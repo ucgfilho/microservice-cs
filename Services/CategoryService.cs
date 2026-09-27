@@ -1,50 +1,52 @@
+using Microsoft.EntityFrameworkCore;
+using projetoAPI.Data;
 using projetoAPI.Models;
-using projetoAPI.Repositories.Interfaces;
 using projetoAPI.Services.Interfaces;
 
 namespace projetoAPI.Services;
 
 public class CategoryService : ICategoryService
 {
-    private readonly ICategoryRepository _repository;
+    private readonly AppDbContext _context;
 
-    public CategoryService(ICategoryRepository repository)
+    public CategoryService(AppDbContext context)
     {
-        _repository = repository;
+        _context = context;
     }
 
     public async Task<List<Category>> GetAllAsync()
     {
-        return await _repository.GetAllAsync();
+        return await _context.Categories.ToListAsync();
     }
 
     public async Task<Category?> GetByIdAsync(int id)
     {
-        return await _repository.GetByIdAsync(id);
+        return await _context.Categories.FindAsync(id);
     }
 
     public async Task<Category> CreateAsync(Category category)
     {
-        await _repository.AddAsync(category);
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync();
         return category;
     }
 
     public async Task<Category?> UpdateAsync(int id, Category updatedCategory)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Categories.FindAsync(id);
         if (existing == null)
             return null;
 
         existing.Name = updatedCategory.Name;
         existing.Description = updatedCategory.Description;
 
-        await _repository.UpdateAsync();
+        await _context.SaveChangesAsync();
         return existing;
     }
 
     public async Task<Category?> PatchAsync(int id, Category updatedCategory)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Categories.FindAsync(id);
         if (existing == null)
             return null;
 
@@ -54,17 +56,18 @@ public class CategoryService : ICategoryService
         if (updatedCategory.Description != null)
             existing.Description = updatedCategory.Description;
 
-        await _repository.UpdateAsync();
+        await _context.SaveChangesAsync();
         return existing;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Categories.FindAsync(id);
         if (existing == null)
             return false;
 
-        await _repository.DeleteAsync(existing);
+        _context.Categories.Remove(existing);
+        await _context.SaveChangesAsync();
         return true;
     }
 }

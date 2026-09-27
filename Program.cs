@@ -4,8 +4,6 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using projetoAPI.Data;
 using projetoAPI.DTOs;
-using projetoAPI.Repositories;
-using projetoAPI.Repositories.Interfaces;
 using projetoAPI.Services;
 using projetoAPI.Services.Interfaces;
 using Scalar.AspNetCore;
@@ -45,9 +43,6 @@ builder.Configuration["Jwt:Key"] = jwtKey;
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();

@@ -1,37 +1,39 @@
+using Microsoft.EntityFrameworkCore;
+using projetoAPI.Data;
 using projetoAPI.Models;
-using projetoAPI.Repositories.Interfaces;
 using projetoAPI.Services.Interfaces;
 
 namespace projetoAPI.Services;
 
 public class ProductService : IProductService
 {
-    private readonly IProductRepository _repository;
+    private readonly AppDbContext _context;
 
-    public ProductService(IProductRepository repository)
+    public ProductService(AppDbContext context)
     {
-        _repository = repository;
+        _context = context;
     }
 
     public async Task<List<Product>> GetAllAsync()
     {
-        return await _repository.GetAllAsync();
+        return await _context.Products.ToListAsync();
     }
 
     public async Task<Product?> GetByIdAsync(int id)
     {
-        return await _repository.GetByIdAsync(id);
+        return await _context.Products.FindAsync(id);
     }
 
     public async Task<Product> CreateAsync(Product product)
     {
-        await _repository.AddAsync(product);
+        _context.Products.Add(product);
+        await _context.SaveChangesAsync();
         return product;
     }
 
     public async Task<Product?> UpdateAsync(int id, Product updatedProduct)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Products.FindAsync(id);
         if (existing == null)
             return null;
 
@@ -43,13 +45,13 @@ public class ProductService : IProductService
         existing.IsActive = updatedProduct.IsActive;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync();
+        await _context.SaveChangesAsync();
         return existing;
     }
 
     public async Task<Product?> PatchAsync(int id, Product updatedProduct)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Products.FindAsync(id);
         if (existing == null)
             return null;
 
@@ -69,17 +71,18 @@ public class ProductService : IProductService
         existing.IsActive = updatedProduct.IsActive;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        await _repository.UpdateAsync();
+        await _context.SaveChangesAsync();
         return existing;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var existing = await _repository.GetByIdAsync(id);
+        var existing = await _context.Products.FindAsync(id);
         if (existing == null)
             return false;
 
-        await _repository.DeleteAsync(existing);
+        _context.Products.Remove(existing);
+        await _context.SaveChangesAsync();
         return true;
     }
 }
