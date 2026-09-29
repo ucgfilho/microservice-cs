@@ -34,6 +34,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "vendedor")]
     public async Task<IActionResult> PostCategory([FromBody] Category newCategory)
     {
         var category = await _categoryService.CreateAsync(newCategory);
@@ -41,6 +42,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "vendedor")]
     public async Task<IActionResult> PutCategory(int id, [FromBody] Category updatedCategory)
     {
         var category = await _categoryService.UpdateAsync(id, updatedCategory);
@@ -51,6 +53,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpPatch("{id}")]
+    [Authorize(Roles = "vendedor")]
     public async Task<IActionResult> PatchCategory(int id, [FromBody] Category updatedCategory)
     {
         var category = await _categoryService.PatchAsync(id, updatedCategory);
@@ -61,6 +64,7 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "vendedor")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
         var deleted = await _categoryService.DeleteAsync(id);
