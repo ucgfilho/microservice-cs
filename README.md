@@ -1,58 +1,49 @@
 # Microsserviço de Catálogo e Autenticação
 
-Microsserviço RESTful desenvolvido em **C# / ASP.NET Core 10** e **MySQL / MariaDB**, estruturado seguindo os princípios de design de software **SOLID** e arquitetura em camadas.
+Microsserviço RESTful desenvolvido em **C# / ASP.NET Core 10** e **MySQL / MariaDB**, estruturado seguindo os princípios de design de software **SOLID**, controle de acesso baseado em funções (**RBAC**) e arquitetura em camadas.
 
-O projeto conta com persistência assíncrona via Entity Framework Core, separação estrita de responsabilidades entre apresentação, regras de negócio e acesso a dados, autenticação via tokens JWT+Bearer e documentação interativa com Scalar.
+O projeto conta com persistência assíncrona via Entity Framework Core, autenticação via tokens JWT+Bearer com Claims de perfil, autorização granular de recursos e documentação interativa com Scalar.
 
 ---
 
 ## Arquitetura
 
-A arquitetura do projeto foi estruturada em camadas desacopladas por meio de interfaces e injeção de dependência:
+A arquitetura do projeto é estruturada em camadas desacopladas por meio de interfaces e injeção de dependência nativa do ASP.NET Core:
 
 ```
-[   Cliente    ]
-       ↓
-[  Controllers ]     → Camada de Apresentação (recebe requisição HTTP, valida ModelState, devolve status code)
-       ↓
-[   Services   ]     → Regras de Negócio e Orquestração (validações, hashing, tokens, auditoria)
-       ↓
-[ Repositories ]     → Camada de Persistência (comunicação direta com o banco de dados via EF Core)
-       ↓
-[ AppDbContext ]     → Banco de Dados MariaDB
+[   Cliente HTTP   ]
+         ↓
+[   Controllers    ]     → Camada de Apresentação (rotas, validação de payload/DTOs, autorização e status codes)
+         ↓
+[     Services     ]     → Regras de Negócio e Orquestração (hashing de senha, emissão de JWT, CRUD e auditoria)
+         ↓
+[   AppDbContext   ]     → Persistência de Dados (Entity Framework Core assíncrono com MariaDB/MySQL)
 ```
 
 ---
 
-## Estrutura do projeto
+## Estrutura do Projeto
 
 ```
 projetoAPI/
-├── Controllers/              # Apresentação HTTP
+├── Controllers/              # Endpoints HTTP da API
 │   ├── AuthController.cs
 │   ├── CategoriesController.cs
 │   └── ProductsController.cs
-├── DTOs/                     # Objetos de Transferência de Dados e Configurações Tipadas
+├── DTOs/                     # Data Transfer Objects e configurações tipadas
 │   ├── AuthResult.cs
 │   ├── JwtSettings.cs
 │   ├── LoginDTO.cs
+│   ├── ProductCreateDTO.cs
 │   └── RegisterDTO.cs
 ├── Data/                     # Contexto do Entity Framework Core
 │   └── AppDbContext.cs
-├── Migrations/               # Histórico de migrações do banco de dados
+├── Migrations/               # Histórico e migrações do banco de dados
 ├── Models/                   # Entidades de Domínio
 │   ├── Category.cs
 │   ├── Product.cs
 │   └── User.cs
-├── Repositories/             # Acesso a dados com EF Core assíncrono
-│   ├── CategoryRepository.cs
-│   ├── ProductRepository.cs
-│   ├── UserRepository.cs
-│   └── Interfaces/           # Contratos dos repositórios
-│       ├── ICategoryRepository.cs
-│       ├── IProductRepository.cs
-│       └── IUserRepository.cs
-├── Services/                 # Lógica de negócio e orquestração
+├── Services/                 # Camada de serviços e regras de negócio
 │   ├── AuthService.cs
 │   ├── BcryptPasswordHasher.cs
 │   ├── CategoryService.cs
@@ -64,42 +55,80 @@ projetoAPI/
 │       ├── IPasswordHasher.cs
 │       ├── IProductService.cs
 │       └── ITokenService.cs
-├── Program.cs                # Composition Root e configuração de middlewares
-├── appsettings.json          # Configurações de ambiente e conexão
+├── Program.cs                # Inicialização, injeção de dependências e middlewares
+├── appsettings.json          # Configurações de ambiente
+├── docker-compose.yml        # Orquestração de containers da API e banco
+├── Dockerfile                # Build e publicação da imagem da aplicação
 └── projetoAPI.csproj         # Dependências e metadados do projeto
 ```
 
 ---
 
-## Stack
+## Regras de Negócio e Acesso (RBAC)
 
-* **Runtime & Framework:** C# / .NET 10 (ASP.NET Core Web API)
-* **ORM:** Entity Framework Core 9 (Pomelo)
-* **Banco de Dados:** MariaDB / MySQL
-* **Autenticação & Segurança:** JWT e Bearer + BCrypt.Net
-* **Documentação OpenAPI:** Scalar
+O sistema implementa autenticação JWT e autorização baseada em papéis (**Roles**):
+
+### 1. Perfis de Usuário
+* **`cliente`**: Perfil voltado para consumidores. Possui permissão apenas de leitura (consulta) no catálogo de produtos.
+* **`vendedor`**: Perfil voltado para lojistas/fornecedores. Possui permissão de criação, edição e exclusão de produtos.
+
+### 2. Registro e Autenticação
+* Ao se registrar (`POST /api/auth/register`), o usuário deve obrigatoriamente informar o tipo de conta desejado: `"cliente"` ou `"vendedor"`.
+* Ao realizar login (`POST /api/auth/login`), o token JWT gerado embute o identificador do usuário (`ClaimTypes.NameIdentifier`) e o seu papel (`ClaimTypes.Role`).
+
+### 3. Gestão de Produtos
+* **Criação (`POST /api/products`)**:
+  * Permitida exclusivamente para usuários com o perfil `vendedor`.
+  * O ID do produto é gerado automaticamente pelo banco de dados (o payload via `ProductCreateDTO` não expõe campos de ID).
+  * O produto é vinculado automaticamente ao identificador do usuário que o cadastrou (`id_usuario`).
+* **Alteração (`PUT` e `PATCH /api/products/{id}`)**:
+  * Permitida apenas para usuários do tipo `vendedor`.
+  * O vendedor só pode atualizar produtos que ele mesmo criou. Tentativas de alterar produtos de outros vendedores resultam em `403 Forbidden`.
+* **Exclusão (`DELETE /api/products/{id}`)**:
+  * Permitida apenas para usuários do tipo `vendedor`.
+  * O vendedor só pode excluir produtos criados por ele mesmo (`403 Forbidden` caso pertença a outro usuário).
+* **Consulta (`GET /api/products` e `GET /api/products/{id}`)**:
+  * Acessível por qualquer usuário autenticado (`cliente` ou `vendedor`).
 
 ---
 
-## Como configurar
+## Stack Tecnológica
+
+* **Runtime & Framework:** C# / .NET 10 (ASP.NET Core Web API)
+* **ORM:** Entity Framework Core 9 (Pomelo MySQL)
+* **Banco de Dados:** MariaDB / MySQL
+* **Autenticação & Segurança:** JWT (Bearer) + BCrypt.Net
+* **Documentação OpenAPI:** Scalar API Reference
+
+---
+
+## Como Executar
 
 ### 1. Pré-requisitos
-* [Docker](https://www.docker.com/)
+* [Docker](https://www.docker.com/) e Docker Compose instalados.
 
-### 2. Configurar o Ambiente
-Copie o arquivo de exemplo para criar o seu arquivo de variáveis de ambiente:
+### 2. Variáveis de Ambiente
+Copie o arquivo de exemplo para gerar o arquivo `.env`:
 ```bash
 cp .env.example .env
 ```
-*(Nota: O `.env` centraliza as senhas e as configurações. A chave JWT é gerada dinamicamente pelo sistema na inicialização).*
+*(Nota: O `.env` centraliza as senhas e portas de conexão. A chave de assinatura JWT é configurada no `appsettings.json` ou gerada dinamicamente caso omitida).*
 
-### 3. Executar o Projeto
-Para iniciar a API e o Banco de Dados simultaneamente:
+### 3. Subir com Docker Compose
+Para iniciar a API e o banco de dados simultaneamente:
 ```bash
 docker-compose up -d --build
 ```
-> **Aviso:** As migrations do Entity Framework Core **são aplicadas automaticamente** assim que a API inicializa. Você não precisa criar as tabelas manualmente. O banco de dados fica acessível na porta `3307` e a API na porta `8080`.
+> **Nota:** As migrações do Entity Framework Core são executadas automaticamente na inicialização da API via `dbContext.Database.Migrate()`. O banco de dados fica exposto na porta `3307` e a API na porta `8080`.
 
-### 4. Acessar a Documentação
-Acesse através desse link:
-**http://localhost:8080/scalar/v1**
+### 4. Execução Local (sem Docker)
+Caso deseje rodar a API localmente com o banco em execução:
+```bash
+dotnet restore
+dotnet build
+dotnet run
+```
+
+### 5. Documentação Interativa
+Com a aplicação em execução, acesse a documentação interativa pelo navegador:
+* **http://localhost:8080/scalar/v1** (Docker) ou **http://localhost:5096/scalar/v1** (Local)
