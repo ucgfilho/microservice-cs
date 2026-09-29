@@ -27,7 +27,8 @@ public class AuthService : IAuthService
         var user = new User
         {
             Email = dto.Email,
-            Password = _passwordHasher.Hash(dto.Password)
+            Password = _passwordHasher.Hash(dto.Password),
+            Role = dto.Role.ToLower()
         };
 
         _context.Users.Add(user);

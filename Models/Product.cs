@@ -36,4 +36,10 @@ public class Product
 
     [Column("atualizado_em")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("id_usuario")]
+    public int UserId { get; set; }
+
+    [ForeignKey("UserId")]
+    public User? User { get; set; }
 }

@@ -20,4 +20,9 @@ public class User
     [MaxLength(255)]
     [Column("senha")]
     public string Password { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(20)]
+    [Column("role")]
+    public string Role { get; set; } = "cliente";
 }
