@@ -18,12 +18,14 @@ public class CategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "cliente,vendedor")]
     public async Task<IActionResult> GetCategories()
     {
         return Ok(await _categoryService.GetAllAsync());
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "cliente,vendedor")]
     public async Task<IActionResult> GetCategoryById(int id)
     {
         var category = await _categoryService.GetByIdAsync(id);

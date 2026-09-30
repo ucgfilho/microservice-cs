@@ -20,12 +20,14 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "cliente,vendedor")]
     public async Task<IActionResult> GetProducts()
     {
         return Ok(await _productService.GetAllAsync());
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "cliente,vendedor")]
     public async Task<IActionResult> GetProductById(int id)
     {
         var product = await _productService.GetByIdAsync(id);
